@@ -185,12 +185,14 @@ utilization AS (
                            AND e.start_date > params.as_of - INTERVAL 365 DAY)
             AS inpatient_admits_365d,
         -- LOS from the UTC end timestamp's date: a documented approximation (end dates can
-        -- shift one day across the UTC boundary; start_date is local-true).
+        -- shift one day across the UTC boundary; start_date is local-true). The endpoint is
+        -- clamped to as_of: a discharge after as_of must not leak future days into the row.
         coalesce(sum(
             CASE WHEN e.encounter_class = 'IMP'
                   AND e.start_date > params.as_of - INTERVAL 365 DAY
                  THEN greatest(date_diff('day', e.start_date,
-                                         coalesce(CAST(e.end_ts AS DATE), e.start_date)), 0)
+                                         least(coalesce(CAST(e.end_ts AS DATE), e.start_date),
+                                               params.as_of)), 0)
             END), 0) AS inpatient_days_365d,
         max(e.start_date) AS last_encounter_date
     FROM encounters e
@@ -263,6 +265,8 @@ SELECT
     date_diff('day', u.last_encounter_date, params.as_of) AS days_since_last_encounter
 FROM patients p
 CROSS JOIN params
+-- Patients not yet born at as_of have no meaningful feature row (and would otherwise
+-- surface negative ages and pollute the panel rollup).
 LEFT JOIN chronic ch        ON ch.source = p.source AND ch.patient_id = p.patient_id
 LEFT JOIN latest_bp bp      ON bp.source = p.source AND bp.patient_id = p.patient_id
 LEFT JOIN latest_lab a1c    ON a1c.source = p.source AND a1c.patient_id = p.patient_id
@@ -277,3 +281,4 @@ LEFT JOIN fobt              ON fobt.source = p.source AND fobt.patient_id = p.pa
 LEFT JOIN flu               ON flu.source = p.source AND flu.patient_id = p.patient_id
 LEFT JOIN utilization u     ON u.source = p.source AND u.patient_id = p.patient_id
 LEFT JOIN labs_365 l365     ON l365.source = p.source AND l365.patient_id = p.patient_id
+WHERE p.birth_date IS NULL OR p.birth_date <= params.as_of

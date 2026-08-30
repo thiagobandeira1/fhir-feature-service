@@ -80,4 +80,42 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(routes_patients.router)
     app.include_router(routes_features.router)
     app.include_router(routes_health.router)
+    _declare_problem_responses(app)
     return app
+
+
+_PROBLEM_SCHEMA = {
+    "type": "object",
+    "title": "Problem",
+    "description": "RFC 9457 problem details; never echoes resource content.",
+    "properties": {
+        "type": {"type": "string"},
+        "title": {"type": "string"},
+        "status": {"type": "integer"},
+        "detail": {"type": "string"},
+        "code": {"type": "string"},
+    },
+    "required": ["type", "title", "status", "detail"],
+}
+
+
+def _declare_problem_responses(app: FastAPI) -> None:
+    """Rewrite the generated OpenAPI so error responses declare what the service actually
+    returns: ``application/problem+json`` with the Problem shape — not FastAPI's default
+    HTTPValidationError (our handler replaces it at runtime)."""
+    schema = app.openapi()
+    schema.setdefault("components", {}).setdefault("schemas", {})["Problem"] = _PROBLEM_SCHEMA
+    schema["components"]["schemas"].pop("HTTPValidationError", None)
+    schema["components"]["schemas"].pop("ValidationError", None)
+    problem_content = {
+        "application/problem+json": {"schema": {"$ref": "#/components/schemas/Problem"}}
+    }
+    for path_item in schema.get("paths", {}).values():
+        for operation in path_item.values():
+            if not isinstance(operation, dict):
+                continue
+            responses = operation.get("responses", {})
+            for status_code, response in list(responses.items()):
+                if status_code in {"404", "409", "413", "422", "500", "503"}:
+                    response["content"] = problem_content
+    app.openapi_schema = schema

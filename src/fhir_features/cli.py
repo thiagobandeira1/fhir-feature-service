@@ -9,6 +9,8 @@ import json
 import sys
 from pathlib import Path
 
+import duckdb
+
 import fhir_features
 from fhir_features.adapters.synthea import (
     SyntheaBundleAdapter,
@@ -70,8 +72,14 @@ def cmd_ingest(args: argparse.Namespace) -> int:
                     service_version=fhir_features.__version__,
                 )
                 ok += 1
-            except (BundleValidationError, ValueError, OSError) as exc:
-                code = exc.code if isinstance(exc, BundleValidationError) else "unreadable_file"
+            except (BundleValidationError, ValueError, OSError, duckdb.Error) as exc:
+                # duckdb.Error included so one bad bundle is audited and the run continues.
+                if isinstance(exc, BundleValidationError):
+                    code = exc.code
+                elif isinstance(exc, duckdb.Error):
+                    code = "load_error"
+                else:
+                    code = "unreadable_file"
                 record_failed_ingest(
                     db,
                     source="synthea",
@@ -113,7 +121,7 @@ def cmd_reparse(_: argparse.Namespace) -> int:
                     reparse=True,
                 )
                 ok += 1
-            except (BundleValidationError, ValueError) as exc:
+            except (BundleValidationError, ValueError, duckdb.Error) as exc:
                 code = exc.code if isinstance(exc, BundleValidationError) else "reparse_error"
                 record_failed_ingest(
                     db,
@@ -131,10 +139,18 @@ def cmd_serve(_: argparse.Namespace) -> int:
     import uvicorn
 
     from fhir_features.api.app import create_app
+    from fhir_features.logging_setup import uvicorn_log_config
 
     settings = get_settings()
     # workers=1 is deliberate: DuckDB is single-writer (see ADR-0002 / SPEC non-goals).
-    uvicorn.run(create_app(settings), host=settings.bind_host, port=settings.bind_port)
+    # The sanitized log config keeps uvicorn's stdlib loggers inside the PHI discipline.
+    uvicorn.run(
+        create_app(settings),
+        host=settings.bind_host,
+        port=settings.bind_port,
+        access_log=False,
+        log_config=uvicorn_log_config(),
+    )
     return 0
 
 

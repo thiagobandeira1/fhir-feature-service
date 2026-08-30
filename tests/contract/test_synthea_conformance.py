@@ -38,7 +38,23 @@ def test_mimic_stub_satisfies_protocol_but_is_unimplemented(
 
 def test_mimic_stub_rejects_in_repo_data_dir(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MIMIC_CSV_DIR", str(SAMPLES_DIR))
-    with pytest.raises(MimicConfigError, match="outside the repository"):
+    with pytest.raises(MimicConfigError, match="never live where it could be committed"):
+        MimicAdapter()
+
+
+def test_mimic_stub_rejects_file_backed_db_url_in_repo(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("MIMIC_CSV_DIR", raising=False)
+    monkeypatch.setenv("MIMIC_DB_URL", f"duckdb:///{SAMPLES_DIR}/mimic.duckdb")
+    with pytest.raises(MimicConfigError, match="never live where it could be committed"):
+        MimicAdapter()
+
+
+def test_mimic_stub_rejects_unknown_url_scheme(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("MIMIC_CSV_DIR", raising=False)
+    monkeypatch.setenv("MIMIC_DB_URL", "gopher://mimic.example/db")
+    with pytest.raises(MimicConfigError, match="scheme not recognized"):
         MimicAdapter()
 
 

@@ -54,6 +54,14 @@ def extract_patient(
                     code="unparseable_death_date", json_pointer=f"{pointer}/deceasedDateTime"
                 )
             )
+    elif resource.get("deceasedBoolean") is True:
+        # Deceased with no date: death_date cannot be derived, so date-based is_deceased logic
+        # will read this patient as alive. Surface the misclassification instead of hiding it.
+        issues.append(
+            ParseIssue(
+                code="deceased_boolean_without_date", json_pointer=f"{pointer}/deceasedBoolean"
+            )
+        )
 
     raw_sex = resource.get("gender")
     sex: Literal["male", "female", "other", "unknown"] = (

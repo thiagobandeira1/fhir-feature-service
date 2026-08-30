@@ -25,6 +25,20 @@ class Database:
         return self._conn
 
     @contextmanager
+    def reader(self) -> Iterator[duckdb.DuckDBPyConnection]:
+        """A read cursor for one request/operation.
+
+        ``cursor()`` duplicates the connection, giving the reader its own result set and
+        transaction context — concurrent requests cannot corrupt each other's results, and a
+        reader never observes a writer's uncommitted state (snapshot isolation).
+        """
+        cursor = self._conn.cursor()
+        try:
+            yield cursor
+        finally:
+            cursor.close()
+
+    @contextmanager
     def transaction(self) -> Iterator[duckdb.DuckDBPyConnection]:
         """Serialized write transaction: BEGIN/COMMIT, ROLLBACK on any error."""
         with self._write_lock:

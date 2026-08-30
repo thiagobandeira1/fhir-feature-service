@@ -139,19 +139,6 @@
         "title": "FeatureSchemaResponse",
         "type": "object"
       },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "title": "Detail",
-            "type": "array"
-          }
-        },
-        "title": "HTTPValidationError",
-        "type": "object"
-      },
       "HealthResponse": {
         "properties": {
           "feature_version": {
@@ -482,44 +469,32 @@
         "title": "PatientSummary",
         "type": "object"
       },
-      "ValidationError": {
+      "Problem": {
+        "description": "RFC 9457 problem details; never echoes resource content.",
         "properties": {
-          "ctx": {
-            "title": "Context",
-            "type": "object"
+          "code": {
+            "type": "string"
           },
-          "input": {
-            "title": "Input"
+          "detail": {
+            "type": "string"
           },
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "title": "Location",
-            "type": "array"
+          "status": {
+            "type": "integer"
           },
-          "msg": {
-            "title": "Message",
+          "title": {
             "type": "string"
           },
           "type": {
-            "title": "Error Type",
             "type": "string"
           }
         },
         "required": [
-          "loc",
-          "msg",
-          "type"
+          "type",
+          "title",
+          "status",
+          "detail"
         ],
-        "title": "ValidationError",
+        "title": "Problem",
         "type": "object"
       }
     }
@@ -546,6 +521,13 @@
             "description": "Successful Response"
           },
           "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
             "description": "Not ready"
           }
         },
@@ -629,9 +611,9 @@
           },
           "422": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
@@ -680,9 +662,23 @@
             "description": "Successful Response"
           },
           "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
             "description": "Bundle over size cap"
           },
           "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
             "description": "Invalid"
           }
         },
@@ -727,9 +723,9 @@
           },
           "422": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
@@ -799,9 +795,9 @@
           },
           "422": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
@@ -874,9 +870,9 @@
           },
           "422": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },
@@ -1002,9 +998,9 @@
           },
           "422": {
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             },

@@ -42,9 +42,10 @@ class LoadResult:
 
 def bundle_already_loaded(db: Database, bundle_hash: str) -> bool:
     """True when this exact bundle content is already the stored state (no-op path)."""
-    row = db.conn.execute(
-        "SELECT 1 FROM raw_bundles WHERE bundle_hash = ?", [bundle_hash]
-    ).fetchone()
+    with db.reader() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM raw_bundles WHERE bundle_hash = ?", [bundle_hash]
+        ).fetchone()
     return row is not None
 
 
@@ -86,13 +87,19 @@ def load_patient(
         action: LoadAction = "reparsed" if reparse else ("replaced" if existed else "created")
 
         # Codings first: their delete resolves resource ids through the still-present
-        # conditions/procedures rows.
+        # conditions/procedures rows. Scoped by resource_type — a Condition and a Procedure
+        # belonging to DIFFERENT patients may share an id value.
         conn.execute(
-            "DELETE FROM resource_codings WHERE source = ? AND resource_id IN ("
-            "SELECT condition_id FROM conditions WHERE source = ? AND patient_id = ?"
-            " UNION ALL "
-            "SELECT procedure_id FROM procedures WHERE source = ? AND patient_id = ?)",
-            [source, source, patient.patient_id, source, patient.patient_id],
+            "DELETE FROM resource_codings WHERE source = ? AND resource_type = 'Condition' "
+            "AND resource_id IN "
+            "(SELECT condition_id FROM conditions WHERE source = ? AND patient_id = ?)",
+            [source, source, patient.patient_id],
+        )
+        conn.execute(
+            "DELETE FROM resource_codings WHERE source = ? AND resource_type = 'Procedure' "
+            "AND resource_id IN "
+            "(SELECT procedure_id FROM procedures WHERE source = ? AND patient_id = ?)",
+            [source, source, patient.patient_id],
         )
         for table in _CANONICAL_TABLES:
             conn.execute(
