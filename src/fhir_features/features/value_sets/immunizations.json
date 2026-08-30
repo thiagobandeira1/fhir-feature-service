@@ -1,0 +1,11 @@
+{
+  "valuesets_version": "2026.08",
+  "value_sets": {
+    "flu_vaccine_cvx": {
+      "code_system": "CVX",
+      "codes": [
+        {"code": "140", "display": "Influenza, seasonal, injectable, preservative free"}
+      ]
+    }
+  }
+}

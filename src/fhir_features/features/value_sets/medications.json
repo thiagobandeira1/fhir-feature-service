@@ -1,0 +1,37 @@
+{
+  "valuesets_version": "2026.08",
+  "value_sets": {
+    "statin_rxnorm": {
+      "code_system": "RXNORM",
+      "codes": [
+        {"code": "617312", "display": "atorvastatin 10 MG Oral Tablet"},
+        {"code": "617314", "display": "atorvastatin 10 MG Oral Tablet [Lipitor]"},
+        {"code": "617310", "display": "atorvastatin 20 MG Oral Tablet"},
+        {"code": "617311", "display": "atorvastatin 40 MG Oral Tablet"},
+        {"code": "617320", "display": "atorvastatin 40 MG Oral Tablet [Lipitor]"},
+        {"code": "259255", "display": "atorvastatin 80 MG Oral Tablet"},
+        {"code": "476349", "display": "ezetimibe 10 MG / simvastatin 20 MG Oral Tablet"},
+        {"code": "476350", "display": "ezetimibe 10 MG / simvastatin 40 MG Oral Tablet"},
+        {"code": "197903", "display": "lovastatin 10 MG Oral Tablet"},
+        {"code": "197904", "display": "lovastatin 20 MG Oral Tablet"},
+        {"code": "197905", "display": "lovastatin 40 MG Oral Tablet"},
+        {"code": "861650", "display": "pitavastatin calcium 2 MG Oral Tablet [Livalo]"},
+        {"code": "904458", "display": "pravastatin sodium 10 MG Oral Tablet"},
+        {"code": "904467", "display": "pravastatin sodium 20 MG Oral Tablet"},
+        {"code": "904475", "display": "pravastatin sodium 40 MG Oral Tablet"},
+        {"code": "904481", "display": "pravastatin sodium 80 MG Oral Tablet"},
+        {"code": "859424", "display": "rosuvastatin calcium 5 MG Oral Tablet"},
+        {"code": "859426", "display": "rosuvastatin calcium 5 MG Oral Tablet [Crestor]"},
+        {"code": "859747", "display": "rosuvastatin calcium 10 MG Oral Tablet"},
+        {"code": "859749", "display": "rosuvastatin calcium 10 MG Oral Tablet [Crestor]"},
+        {"code": "859751", "display": "rosuvastatin calcium 20 MG Oral Tablet"},
+        {"code": "859753", "display": "rosuvastatin calcium 20 MG Oral Tablet [Crestor]"},
+        {"code": "859419", "display": "rosuvastatin calcium 40 MG Oral Tablet"},
+        {"code": "314231", "display": "simvastatin 10 MG Oral Tablet"},
+        {"code": "312961", "display": "simvastatin 20 MG Oral Tablet"},
+        {"code": "198211", "display": "simvastatin 40 MG Oral Tablet"},
+        {"code": "200345", "display": "simvastatin 80 MG Oral Tablet"}
+      ]
+    }
+  }
+}

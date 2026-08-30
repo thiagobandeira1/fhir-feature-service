@@ -1,0 +1,26 @@
+{
+  "valuesets_version": "2026.08",
+  "value_sets": {
+    "mammogram_proc": {
+      "code_system": "SNOMED",
+      "codes": [
+        {"code": "71651007", "display": "Mammography (procedure)"},
+        {"code": "24623002", "display": "Screening mammography (procedure)"},
+        {"code": "241055006", "display": "Mammogram - symptomatic (procedure)"}
+      ]
+    },
+    "colonoscopy_proc": {
+      "code_system": "SNOMED",
+      "codes": [
+        {"code": "73761001", "display": "Colonoscopy (procedure)"}
+      ]
+    },
+    "retinal_exam_proc": {
+      "code_system": "SNOMED",
+      "codes": [
+        {"code": "722161008", "display": "Diabetic retinal eye exam (procedure)"},
+        {"code": "700070005", "display": "Optical coherence tomography of retina (procedure)"}
+      ]
+    }
+  }
+}

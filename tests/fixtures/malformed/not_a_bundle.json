@@ -1,0 +1,6 @@
+{
+  "resourceType": "Patient",
+  "id": "top-level-patient",
+  "gender": "female",
+  "birthDate": "1970-01-01"
+}

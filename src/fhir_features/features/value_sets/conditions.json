@@ -1,0 +1,62 @@
+{
+  "valuesets_version": "2026.08",
+  "value_sets": {
+    "diabetes_snomed": {
+      "code_system": "SNOMED",
+      "codes": [
+        {"code": "44054006", "display": "Diabetes mellitus type 2 (disorder)"},
+        {"code": "427089005", "display": "Diabetes mellitus due to cystic fibrosis (disorder)"},
+        {"code": "60951000119105", "display": "Blindness due to type 2 diabetes mellitus (disorder)"},
+        {"code": "127013003", "display": "Disorder of kidney due to diabetes mellitus (disorder)"},
+        {"code": "97331000119101", "display": "Macular edema and retinopathy due to type 2 diabetes mellitus (disorder)"},
+        {"code": "90781000119102", "display": "Microalbuminuria due to type 2 diabetes mellitus (disorder)"},
+        {"code": "368581000119106", "display": "Neuropathy due to type 2 diabetes mellitus (disorder)"},
+        {"code": "1551000119108", "display": "Nonproliferative diabetic retinopathy due to type II diabetes mellitus"},
+        {"code": "1501000119109", "display": "Proliferative diabetic retinopathy due to type II diabetes mellitus"},
+        {"code": "157141000119108", "display": "Proteinuria due to type 2 diabetes mellitus (disorder)"}
+      ]
+    },
+    "hypertension_snomed": {
+      "code_system": "SNOMED",
+      "codes": [
+        {"code": "59621000", "display": "Essential hypertension (disorder)"}
+      ]
+    },
+    "ascvd_snomed": {
+      "code_system": "SNOMED",
+      "codes": [
+        {"code": "414545008", "display": "Ischemic heart disease (disorder)"},
+        {"code": "22298006", "display": "Myocardial infarction (disorder)"},
+        {"code": "401303003", "display": "Acute ST segment elevation myocardial infarction (disorder)"},
+        {"code": "401314000", "display": "Acute non-ST segment elevation myocardial infarction (disorder)"},
+        {"code": "399211009", "display": "History of myocardial infarction (situation)"},
+        {"code": "4557003", "display": "Preinfarction syndrome (disorder)"},
+        {"code": "399261000", "display": "History of coronary artery bypass grafting (situation)"},
+        {"code": "230690007", "display": "Cerebrovascular accident (disorder)"}
+      ]
+    },
+    "ckd_snomed": {
+      "code_system": "SNOMED",
+      "codes": [
+        {"code": "431855005", "display": "Chronic kidney disease stage 1 (disorder)"},
+        {"code": "431856006", "display": "Chronic kidney disease stage 2 (disorder)"},
+        {"code": "433144002", "display": "Chronic kidney disease stage 3 (disorder)"},
+        {"code": "431857002", "display": "Chronic kidney disease stage 4 (disorder)"}
+      ]
+    },
+    "chf_snomed": {
+      "code_system": "SNOMED",
+      "codes": [
+        {"code": "84114007", "display": "Heart failure (disorder)"},
+        {"code": "88805009", "display": "Chronic congestive heart failure (disorder)"}
+      ]
+    },
+    "copd_snomed": {
+      "code_system": "SNOMED",
+      "codes": [
+        {"code": "185086009", "display": "Chronic obstructive bronchitis (disorder)"},
+        {"code": "87433001", "display": "Pulmonary emphysema (disorder)"}
+      ]
+    }
+  }
+}

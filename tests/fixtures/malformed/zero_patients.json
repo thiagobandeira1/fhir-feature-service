@@ -1,0 +1,23 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:0b6cb391-1111-2222-3333-444455556666",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "0b6cb391-1111-2222-3333-444455556666",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8302-2",
+              "display": "Body Height"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

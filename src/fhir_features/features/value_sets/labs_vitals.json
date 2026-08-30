@@ -1,0 +1,37 @@
+{
+  "valuesets_version": "2026.08",
+  "value_sets": {
+    "hba1c_loinc": {
+      "code_system": "LOINC",
+      "codes": [
+        {"code": "4548-4", "display": "Hemoglobin A1c/Hemoglobin.total in Blood"}
+      ]
+    },
+    "bp_loinc": {
+      "code_system": "LOINC",
+      "codes": [
+        {"code": "85354-9", "display": "Blood pressure panel with all children optional"},
+        {"code": "8480-6", "display": "Systolic Blood Pressure"},
+        {"code": "8462-4", "display": "Diastolic Blood Pressure"}
+      ]
+    },
+    "bmi_loinc": {
+      "code_system": "LOINC",
+      "codes": [
+        {"code": "39156-5", "display": "Body mass index (BMI) [Ratio]"}
+      ]
+    },
+    "tobacco_status_loinc": {
+      "code_system": "LOINC",
+      "codes": [
+        {"code": "72166-2", "display": "Tobacco smoking status"}
+      ]
+    },
+    "fobt_fit_loinc": {
+      "code_system": "LOINC",
+      "codes": [
+        {"code": "57905-2", "display": "Hemoglobin.gastrointestinal.lower [Presence] in Stool by Immunoassay --1st specimen"}
+      ]
+    }
+  }
+}

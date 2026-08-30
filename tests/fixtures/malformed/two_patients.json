@@ -1,0 +1,24 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:aaaaaaaa-0000-0000-0000-000000000001",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "aaaaaaaa-0000-0000-0000-000000000001",
+        "gender": "male",
+        "birthDate": "1950-08-03"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:aaaaaaaa-0000-0000-0000-000000000002",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "aaaaaaaa-0000-0000-0000-000000000002",
+        "gender": "female",
+        "birthDate": "1962-01-15"
+      }
+    }
+  ]
+}
