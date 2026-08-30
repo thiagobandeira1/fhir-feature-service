@@ -46,9 +46,7 @@ FEATURES: tuple[FeatureSpec, ...] = (
     FeatureSpec("has_ckd", "boolean", False, "Same pattern.", "ckd_snomed"),
     FeatureSpec("has_chf", "boolean", False, "Same pattern.", "chf_snomed"),
     FeatureSpec("has_copd", "boolean", False, "Same pattern.", "copd_snomed"),
-    FeatureSpec(
-        "chronic_condition_count", "integer", False, "Count of TRUE chronic flags above."
-    ),
+    FeatureSpec("chronic_condition_count", "integer", False, "Count of TRUE chronic flags above."),
     FeatureSpec(
         "latest_sbp",
         "number",
@@ -86,7 +84,10 @@ FEATURES: tuple[FeatureSpec, ...] = (
         "statin_rxnorm",
     ),
     FeatureSpec(
-        "last_statin_authored_date", "date", True, "Most recent statin order on/before as_of.",
+        "last_statin_authored_date",
+        "date",
+        True,
+        "Most recent statin order on/before as_of.",
         "statin_rxnorm",
     ),
     FeatureSpec(

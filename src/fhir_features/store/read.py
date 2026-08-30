@@ -31,9 +31,7 @@ def _rows_to_dicts(cursor: Any) -> list[dict[str, Any]]:
     return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
 
 
-def resolve_patient(
-    db: Database, patient_id: str, source: str | None
-) -> dict[str, Any] | None:
+def resolve_patient(db: Database, patient_id: str, source: str | None) -> dict[str, Any] | None:
     """Find one patient row; raise :class:`AmbiguousPatientError` on a cross-source clash."""
     sql = "SELECT * FROM patients WHERE patient_id = ?"
     params: list[Any] = [patient_id]
@@ -54,9 +52,7 @@ class PatientPage:
     total: int
 
 
-def list_patients(
-    db: Database, *, limit: int, offset: int, source: str | None
-) -> PatientPage:
+def list_patients(db: Database, *, limit: int, offset: int, source: str | None) -> PatientPage:
     where = "" if source is None else " WHERE source = ?"
     params: list[Any] = [] if source is None else [source]
     total_row = db.conn.execute(
