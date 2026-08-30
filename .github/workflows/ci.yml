@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Format check (ruff)
+        run: uv run ruff format --check .
+
+      - name: Type-check (mypy)
+        run: uv run mypy
+
+      - name: Tests
+        run: uv run pytest
+
+      - name: Guard — no data files staged
+        run: |
+          if git ls-files | grep -E '\.(csv|parquet|db|duckdb|sqlite)$' | grep -v '^synthetic/samples/'; then
+            echo "::error::Data files outside synthetic/samples/ are committed"; exit 1
+          fi
+          echo "OK: no stray data files"

@@ -1,0 +1,24 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1500"]
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: block-data-files
+        name: Block data files (PHI guardrail)
+        entry: bash -c 'files=$(printf "%s\n" "$@" | grep -Ev "^synthetic/samples/" | grep -E "\.(csv|tsv|parquet|db|duckdb|sqlite)$" || true); if [ -n "$files" ]; then echo "BLOCKED data files:"; echo "$files"; exit 1; fi' --
+        language: system
