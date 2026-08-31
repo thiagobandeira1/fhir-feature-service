@@ -18,6 +18,9 @@ class Database:
 
     def __init__(self, db_path: Path | str) -> None:
         self._conn = duckdb.connect(str(db_path))
+        # Pin the session timezone: TIMESTAMP arithmetic and tz-aware value conversion must
+        # not depend on the host machine's locale (dev boxes vs CI).
+        self._conn.execute("SET TimeZone = 'UTC'")
         self._write_lock = threading.Lock()
 
     @property

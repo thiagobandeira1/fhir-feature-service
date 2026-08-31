@@ -71,7 +71,7 @@ def migrate(db: Database) -> int:
             tx.execute(sql)
             tx.execute(
                 "INSERT INTO schema_migrations VALUES (?, ?, ?, ?)",
-                [version, name, checksum, datetime.now(UTC)],
+                [version, name, checksum, datetime.now(UTC).replace(tzinfo=None)],
             )
         log.info("migration_applied", migration_version=version)
         current = version
