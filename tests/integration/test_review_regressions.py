@@ -16,9 +16,7 @@ def _bundle(*resources: dict[str, Any]) -> dict[str, Any]:
     return {
         "resourceType": "Bundle",
         "type": "transaction",
-        "entry": [
-            {"fullUrl": f"urn:uuid:{r['id']}", "resource": r} for r in resources
-        ],
+        "entry": [{"fullUrl": f"urn:uuid:{r['id']}", "resource": r} for r in resources],
     }
 
 
@@ -76,9 +74,7 @@ class TestForeignSubjectDropped:
                 "resourceType": "Condition",
                 "id": "c1",
                 "subject": {"reference": "Patient/SOMEONE-ELSE"},
-                "code": {
-                    "coding": [{"system": "http://snomed.info/sct", "code": "44054006"}]
-                },
+                "code": {"coding": [{"system": "http://snomed.info/sct", "code": "44054006"}]},
                 "onsetDateTime": "2020-01-01T00:00:00Z",
             },
         )
