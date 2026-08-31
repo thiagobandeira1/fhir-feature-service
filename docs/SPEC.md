@@ -179,6 +179,7 @@ medication_requests, immunizations, claim_diagnoses, codings, skipped, warnings)
 ```python
 class SourceAdapter(Protocol):
     source: ClassVar[str]
+
     def iter_patient_records(self) -> Iterator[PatientRecordSet]: ...
 ```
 

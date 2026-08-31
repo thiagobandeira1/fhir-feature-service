@@ -63,8 +63,25 @@ def record_set_from_bundle(payload: Any) -> PatientRecordSet:
     """
     entries = validate_bundle(payload)
     refmap = build_reference_map(entries)
+    warnings: list[ParseIssue] = []
 
+    # The Patient is extracted FIRST so every subsequent row can be identity-checked against
+    # it: a resource whose subject resolves to a DIFFERENT patient would otherwise be stored
+    # under a foreign patient_id, breaking the replace-by-(source, patient_id) invariant.
     patient: PatientRow | None = None
+    patient_index = -1
+    for i, entry in enumerate(entries):
+        if entry["resource"]["resourceType"] == "Patient":
+            patient, patient_issues = extract_patient(entry["resource"], f"/entry/{i}/resource")
+            patient_index = i
+            warnings.extend(patient_issues)
+            break
+    if patient is None:
+        raise BundleValidationError(
+            "patient_unextractable", "the bundle's Patient resource could not be extracted"
+        )
+    pid = patient.patient_id
+
     encounters: list[EncounterRow] = []
     conditions: list[ConditionRow] = []
     observations: list[ObservationRow] = []
@@ -74,63 +91,103 @@ def record_set_from_bundle(payload: Any) -> PatientRecordSet:
     claim_diagnoses: list[ClaimDiagnosisRow] = []
     codings: list[CodingRow] = []
     skipped: dict[str, int] = {}
-    warnings: list[ParseIssue] = []
     claim_entries: list[tuple[Mapping[str, Any], str]] = []
+    seen_ids: dict[str, set[str]] = {
+        "encounters": set(),
+        "conditions": set(),
+        "observations": set(),
+        "procedures": set(),
+        "medication_requests": set(),
+        "immunizations": set(),
+    }
+
+    def keep(table: str, row_id: str, row_patient_id: str, pointer: str) -> bool:
+        """Drop-with-warning for foreign subjects and duplicate ids (PK safety)."""
+        if row_patient_id != pid:
+            warnings.append(ParseIssue(code="foreign_subject_dropped", json_pointer=pointer))
+            return False
+        if row_id in seen_ids[table]:
+            warnings.append(ParseIssue(code="duplicate_resource_id", json_pointer=pointer))
+            return False
+        seen_ids[table].add(row_id)
+        return True
 
     for i, entry in enumerate(entries):
+        if i == patient_index:
+            continue
         resource: Mapping[str, Any] = entry["resource"]
         resource_type = resource["resourceType"]
         pointer = f"/entry/{i}/resource"
 
-        if resource_type == "Patient":
-            patient, issues = extract_patient(resource, pointer)
-            warnings.extend(issues)
-        elif resource_type == "Encounter":
+        if resource_type == "Encounter":
             enc, issues = extract_encounter(resource, refmap, pointer)
-            if enc is not None:
+            if enc is not None and keep("encounters", enc.encounter_id, enc.patient_id, pointer):
                 encounters.append(enc)
             warnings.extend(issues)
         elif resource_type == "Condition":
             cond, cond_codings, issues = extract_condition(resource, refmap, pointer)
-            if cond is not None:
+            if cond is not None and keep("conditions", cond.condition_id, cond.patient_id, pointer):
                 conditions.append(cond)
                 codings.extend(cond_codings)
             warnings.extend(issues)
         elif resource_type == "Observation":
             obs_rows, issues = extract_observation(resource, refmap, pointer)
-            observations.extend(obs_rows)
+            for obs in obs_rows:
+                if keep("observations", obs.observation_id, obs.patient_id, pointer):
+                    observations.append(obs)
             warnings.extend(issues)
         elif resource_type == "Procedure":
             proc, proc_codings, issues = extract_procedure(resource, refmap, pointer)
-            if proc is not None:
+            if proc is not None and keep("procedures", proc.procedure_id, proc.patient_id, pointer):
                 procedures.append(proc)
                 codings.extend(proc_codings)
             warnings.extend(issues)
         elif resource_type == "MedicationRequest":
             med, issues = extract_medication_request(resource, refmap, pointer)
-            if med is not None:
+            if med is not None and keep(
+                "medication_requests", med.medication_request_id, med.patient_id, pointer
+            ):
                 medication_requests.append(med)
             warnings.extend(issues)
         elif resource_type == "Immunization":
             imm, issues = extract_immunization(resource, refmap, pointer)
-            if imm is not None:
+            if imm is not None and keep(
+                "immunizations", imm.immunization_id, imm.patient_id, pointer
+            ):
                 immunizations.append(imm)
             warnings.extend(issues)
         elif resource_type == "Claim":
             claim_entries.append((resource, pointer))  # second pass: needs extracted conditions
+        elif resource_type == "Patient":
+            pass  # already validated: exactly one, handled above
         else:
             skipped[resource_type] = skipped.get(resource_type, 0) + 1
 
-    if patient is None:
-        raise BundleValidationError(
-            "patient_unextractable", "the bundle's Patient resource could not be extracted"
-        )
-
     conditions_by_id = {c.condition_id: c for c in conditions}
+    seen_claim_keys: set[tuple[str, int]] = set()
     for resource, pointer in claim_entries:
         diags, issues = extract_claim_diagnoses(resource, refmap, conditions_by_id, pointer)
-        claim_diagnoses.extend(diags)
+        for diag in diags:
+            key = (diag.claim_id, diag.diagnosis_sequence)
+            if diag.patient_id != pid:
+                warnings.append(ParseIssue(code="foreign_subject_dropped", json_pointer=pointer))
+                continue
+            if key in seen_claim_keys:
+                warnings.append(ParseIssue(code="duplicate_resource_id", json_pointer=pointer))
+                continue
+            seen_claim_keys.add(key)
+            claim_diagnoses.append(diag)
         warnings.extend(issues)
+
+    # Codings ride along with their rows: drop any whose owning row was dropped above.
+    kept_condition_ids = {c.condition_id for c in conditions}
+    kept_procedure_ids = {p.procedure_id for p in procedures}
+    codings = [
+        c
+        for c in codings
+        if (c.resource_type == "Condition" and c.resource_id in kept_condition_ids)
+        or (c.resource_type == "Procedure" and c.resource_id in kept_procedure_ids)
+    ]
 
     return PatientRecordSet(
         source=SOURCE,

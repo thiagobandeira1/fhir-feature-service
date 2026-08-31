@@ -10,6 +10,7 @@ mimic/
 *.duckdb
 *.sqlite
 *.sqlite3
+*.json.gz
 
 # ---- Secrets ----
 .env

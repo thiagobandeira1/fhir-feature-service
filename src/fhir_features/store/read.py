@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
 from fhir_features.store.db import Database
@@ -26,9 +27,17 @@ class AmbiguousPatientError(LookupError):
     """The patient id exists under more than one source; the caller must disambiguate."""
 
 
+def _jsonable(value: Any) -> Any:
+    # DECIMAL columns (observation value_num) must serialize as JSON numbers, not strings.
+    return float(value) if isinstance(value, Decimal) else value
+
+
 def _rows_to_dicts(cursor: Any) -> list[dict[str, Any]]:
     columns = [d[0] for d in cursor.description]
-    return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
+    return [
+        {col: _jsonable(v) for col, v in zip(columns, row, strict=True)}
+        for row in cursor.fetchall()
+    ]
 
 
 def resolve_patient(db: Database, patient_id: str, source: str | None) -> dict[str, Any] | None:
@@ -38,7 +47,8 @@ def resolve_patient(db: Database, patient_id: str, source: str | None) -> dict[s
     if source is not None:
         sql += " AND source = ?"
         params.append(source)
-    rows = _rows_to_dicts(db.conn.execute(sql, params))
+    with db.reader() as conn:
+        rows = _rows_to_dicts(conn.execute(sql, params))
     if not rows:
         return None
     if len(rows) > 1:
@@ -55,18 +65,19 @@ class PatientPage:
 def list_patients(db: Database, *, limit: int, offset: int, source: str | None) -> PatientPage:
     where = "" if source is None else " WHERE source = ?"
     params: list[Any] = [] if source is None else [source]
-    total_row = db.conn.execute(
-        f"SELECT count(*) FROM patients{where}",  # noqa: S608
-        params,
-    ).fetchone()
-    items = _rows_to_dicts(
-        db.conn.execute(
-            "SELECT source, patient_id, birth_date, sex, "  # noqa: S608
-            "(death_date IS NOT NULL) AS deceased, ingested_at AS last_ingested_at "
-            f"FROM patients{where} ORDER BY source, patient_id LIMIT ? OFFSET ?",
-            [*params, limit, offset],
+    with db.reader() as conn:
+        total_row = conn.execute(
+            f"SELECT count(*) FROM patients{where}",  # noqa: S608
+            params,
+        ).fetchone()
+        items = _rows_to_dicts(
+            conn.execute(
+                "SELECT source, patient_id, birth_date, sex, "  # noqa: S608
+                "(death_date IS NOT NULL) AS deceased, ingested_at AS last_ingested_at "
+                f"FROM patients{where} ORDER BY source, patient_id LIMIT ? OFFSET ?",
+                [*params, limit, offset],
+            )
         )
-    )
     return PatientPage(items=items, total=int(total_row[0]) if total_row else 0)
 
 
@@ -82,23 +93,26 @@ def get_record_sections(
 ) -> dict[str, list[dict[str, Any]]]:
     """Fetch the requested sections, each ordered by (event date, id...) ascending."""
     out: dict[str, list[dict[str, Any]]] = {}
-    for section in sections:
-        table, date_col, id_cols = RECORD_SECTIONS[section]
-        sql = f"SELECT * FROM {table} WHERE source = ? AND patient_id = ?"  # noqa: S608
-        params: list[Any] = [source, patient_id]
-        if date_from is not None:
-            sql += f" AND {date_col} >= ?"
-            params.append(date_from)
-        if date_to is not None:
-            sql += f" AND {date_col} <= ?"
-            params.append(date_to)
-        if section == "observations" and observation_codes:
-            placeholders = ", ".join("?" for _ in observation_codes)
-            sql += f" AND code IN ({placeholders})"
-            params.extend(observation_codes)
-        sql += f" ORDER BY {date_col} NULLS FIRST, {', '.join(id_cols)}"
-        rows = _rows_to_dicts(db.conn.execute(sql, params))
-        for row in rows:
-            row.pop("ingested_at", None)
-        out[section] = rows
+    with db.reader() as conn:
+        for section in sections:
+            table, date_col, id_cols = RECORD_SECTIONS[section]
+            sql = f"SELECT * FROM {table} WHERE source = ? AND patient_id = ?"  # noqa: S608
+            params: list[Any] = [source, patient_id]
+            # NULL-dated rows (possible for claim_diagnoses.billable_period_start) are always
+            # included: a date window filters knowns, it must not hide unknowns.
+            if date_from is not None:
+                sql += f" AND ({date_col} >= ? OR {date_col} IS NULL)"
+                params.append(date_from)
+            if date_to is not None:
+                sql += f" AND ({date_col} <= ? OR {date_col} IS NULL)"
+                params.append(date_to)
+            if section == "observations" and observation_codes:
+                placeholders = ", ".join("?" for _ in observation_codes)
+                sql += f" AND code IN ({placeholders})"
+                params.extend(observation_codes)
+            sql += f" ORDER BY {date_col} NULLS FIRST, {', '.join(id_cols)}"
+            rows = _rows_to_dicts(conn.execute(sql, params))
+            for row in rows:
+                row.pop("ingested_at", None)
+            out[section] = rows
     return out

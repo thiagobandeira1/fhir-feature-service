@@ -189,7 +189,7 @@
     "has_diabetes": false,
     "has_hypertension": false,
     "inpatient_admits_365d": 1,
-    "inpatient_days_365d": 1,
+    "inpatient_days_365d": 2,
     "is_deceased": false,
     "lab_results_365d": 34,
     "last_colonoscopy_date": null,

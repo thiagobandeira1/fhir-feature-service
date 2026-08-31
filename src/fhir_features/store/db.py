@@ -18,11 +18,28 @@ class Database:
 
     def __init__(self, db_path: Path | str) -> None:
         self._conn = duckdb.connect(str(db_path))
+        # Pin the session timezone: TIMESTAMP arithmetic and tz-aware value conversion must
+        # not depend on the host machine's locale (dev boxes vs CI).
+        self._conn.execute("SET TimeZone = 'UTC'")
         self._write_lock = threading.Lock()
 
     @property
     def conn(self) -> duckdb.DuckDBPyConnection:
         return self._conn
+
+    @contextmanager
+    def reader(self) -> Iterator[duckdb.DuckDBPyConnection]:
+        """A read cursor for one request/operation.
+
+        ``cursor()`` duplicates the connection, giving the reader its own result set and
+        transaction context — concurrent requests cannot corrupt each other's results, and a
+        reader never observes a writer's uncommitted state (snapshot isolation).
+        """
+        cursor = self._conn.cursor()
+        try:
+            yield cursor
+        finally:
+            cursor.close()
 
     @contextmanager
     def transaction(self) -> Iterator[duckdb.DuckDBPyConnection]:

@@ -172,13 +172,25 @@ def extract_observation(
         )
     ]
 
-    for component in resource.get("component") or []:
+    seen_component_codes: set[str] = set()
+    for comp_index, component in enumerate(resource.get("component") or []):
         if not isinstance(component, Mapping):
             continue
         comp_coding = pick_primary_coding(_codings(component.get("code")), prefer=_PREFER)
         quantity = component.get("valueQuantity")
         if comp_coding is None or not isinstance(quantity, Mapping):
             continue  # a component without a code or a quantity value carries nothing storable
+        if comp_coding["code"] in seen_component_codes:
+            # Repeated component codes are legal FHIR; the code-keyed child id cannot hold two.
+            # Keep the first, surface the drop — never let a PK collision kill the bundle.
+            issues.append(
+                ParseIssue(
+                    code="duplicate_component_code",
+                    json_pointer=f"{pointer}/component/{comp_index}",
+                )
+            )
+            continue
+        seen_component_codes.add(comp_coding["code"])
         comp_num, comp_unit = _quantity_fields(quantity)
         rows.append(
             ObservationRow(

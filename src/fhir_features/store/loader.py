@@ -20,6 +20,18 @@ log = get_logger(__name__)
 
 LoadAction = Literal["created", "replaced", "unchanged", "reparsed"]
 
+
+def _naive_utc(value: datetime | None) -> datetime | None:
+    """Normalize to naive UTC before hitting a TIMESTAMP column.
+
+    duckdb converts tz-aware datetimes through the session timezone; storing naive UTC makes
+    the stored value (and every date cast derived from it) machine-independent.
+    """
+    if value is None or value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
+
+
 _CANONICAL_TABLES = (
     "patients",
     "encounters",
@@ -42,9 +54,10 @@ class LoadResult:
 
 def bundle_already_loaded(db: Database, bundle_hash: str) -> bool:
     """True when this exact bundle content is already the stored state (no-op path)."""
-    row = db.conn.execute(
-        "SELECT 1 FROM raw_bundles WHERE bundle_hash = ?", [bundle_hash]
-    ).fetchone()
+    with db.reader() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM raw_bundles WHERE bundle_hash = ?", [bundle_hash]
+        ).fetchone()
     return row is not None
 
 
@@ -72,7 +85,7 @@ def load_patient(
     """Atomically replace one patient's rows with the record set's contents."""
     source = record_set.source
     patient = record_set.patient
-    now = datetime.now(UTC)
+    now = datetime.now(UTC).replace(tzinfo=None)  # stored naive-UTC, machine-independent
     started_at = now
 
     with db.transaction() as conn:
@@ -86,13 +99,19 @@ def load_patient(
         action: LoadAction = "reparsed" if reparse else ("replaced" if existed else "created")
 
         # Codings first: their delete resolves resource ids through the still-present
-        # conditions/procedures rows.
+        # conditions/procedures rows. Scoped by resource_type — a Condition and a Procedure
+        # belonging to DIFFERENT patients may share an id value.
         conn.execute(
-            "DELETE FROM resource_codings WHERE source = ? AND resource_id IN ("
-            "SELECT condition_id FROM conditions WHERE source = ? AND patient_id = ?"
-            " UNION ALL "
-            "SELECT procedure_id FROM procedures WHERE source = ? AND patient_id = ?)",
-            [source, source, patient.patient_id, source, patient.patient_id],
+            "DELETE FROM resource_codings WHERE source = ? AND resource_type = 'Condition' "
+            "AND resource_id IN "
+            "(SELECT condition_id FROM conditions WHERE source = ? AND patient_id = ?)",
+            [source, source, patient.patient_id],
+        )
+        conn.execute(
+            "DELETE FROM resource_codings WHERE source = ? AND resource_type = 'Procedure' "
+            "AND resource_id IN "
+            "(SELECT procedure_id FROM procedures WHERE source = ? AND patient_id = ?)",
+            [source, source, patient.patient_id],
         )
         for table in _CANONICAL_TABLES:
             conn.execute(
@@ -158,8 +177,8 @@ def load_patient(
                     e.type_code,
                     e.type_system,
                     e.type_display,
-                    e.start_ts,
-                    e.end_ts,
+                    _naive_utc(e.start_ts),
+                    _naive_utc(e.end_ts),
                     e.start_date,
                     e.date_precision,
                     now,
@@ -241,7 +260,7 @@ def load_patient(
                     o.code_system,
                     o.code_display,
                     o.category,
-                    o.effective_ts,
+                    _naive_utc(o.effective_ts),
                     o.effective_date,
                     o.date_precision,
                     o.value_num,
@@ -466,6 +485,7 @@ def record_failed_ingest(
     db: Database, *, source: str, bundle_hash: str | None, error_code: str, service_version: str
 ) -> None:
     """Append a failed-ingest audit row (no patient rows are touched on failure)."""
+    now = datetime.now(UTC).replace(tzinfo=None)
     with db.transaction() as conn:
         conn.execute(
             "INSERT INTO ingest_log VALUES (?, ?, NULL, ?, 'failed', NULL, ?, ?, ?, ?)",
@@ -474,8 +494,8 @@ def record_failed_ingest(
                 source,
                 bundle_hash,
                 json.dumps([{"code": error_code, "json_pointer": ""}]),
-                datetime.now(UTC),
-                datetime.now(UTC),
+                now,
+                now,
                 service_version,
             ],
         )

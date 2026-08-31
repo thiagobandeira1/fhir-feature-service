@@ -1,6 +1,7 @@
 """Query-time feature computation and the panel rollup."""
 
 from datetime import date
+from decimal import Decimal
 from functools import lru_cache
 from importlib import resources
 from typing import Any
@@ -15,9 +16,18 @@ def _feature_sql() -> str:
     ).read_text(encoding="utf-8")
 
 
+def _jsonable(value: Any) -> Any:
+    # DECIMAL columns must serialize as JSON numbers (the schema declares 'number'),
+    # not as strings the way pydantic renders Decimal by default.
+    return float(value) if isinstance(value, Decimal) else value
+
+
 def _rows_to_dicts(cursor: Any) -> list[dict[str, Any]]:
     columns = [d[0] for d in cursor.description]
-    return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
+    return [
+        {col: _jsonable(v) for col, v in zip(columns, row, strict=True)}
+        for row in cursor.fetchall()
+    ]
 
 
 def compute_features(
@@ -45,7 +55,8 @@ def compute_features(
     if limit is not None:
         sql += " LIMIT ? OFFSET ?"
         params.extend([limit, offset])
-    return _rows_to_dicts(db.conn.execute(sql, params))
+    with db.reader() as conn:
+        return _rows_to_dicts(conn.execute(sql, params))
 
 
 def count_patients(db: Database, *, source: str | None = None) -> int:
@@ -54,7 +65,8 @@ def count_patients(db: Database, *, source: str | None = None) -> int:
     if source is not None:
         sql += " WHERE source = ?"
         params.append(source)
-    row = db.conn.execute(sql, params).fetchone()
+    with db.reader() as conn:
+        row = conn.execute(sql, params).fetchone()
     return int(row[0]) if row else 0
 
 
@@ -78,7 +90,8 @@ def panel_summary(db: Database, as_of: date) -> dict[str, Any]:
         FROM ({_feature_sql()}) f
         WHERE NOT f.is_deceased
     """  # noqa: S608 — package SQL, not user input
-    rows = _rows_to_dicts(db.conn.execute(sql, [as_of]))
+    with db.reader() as conn:
+        rows = _rows_to_dicts(conn.execute(sql, [as_of]))
     row = rows[0]
     return {
         "as_of": as_of,

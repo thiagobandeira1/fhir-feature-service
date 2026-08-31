@@ -66,3 +66,45 @@ def configure_logging(level: int = logging.INFO) -> None:
 def get_logger(name: str) -> structlog.stdlib.BoundLogger:
     """Named logger; call :func:`configure_logging` once at startup first."""
     return structlog.get_logger(name)  # type: ignore[no-any-return]
+
+
+class MessageOnlyFormatter(logging.Formatter):
+    """Formats level + message only — no tracebacks, no paths, no request lines."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        record.exc_info = None
+        record.exc_text = None
+        record.stack_info = None
+        return super().format(record)
+
+
+def uvicorn_log_config() -> dict[str, Any]:
+    """Sanitized logging config for ``uvicorn.run``.
+
+    Uvicorn's stdlib loggers would otherwise bypass the structlog allowlist entirely —
+    access lines carry full request paths and error logs carry tracebacks. Access logging is
+    disabled (our middleware logs requests through the allowlist); uvicorn.error is reduced
+    to level + message.
+    """
+    return {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "sanitized": {
+                "()": "fhir_features.logging_setup.MessageOnlyFormatter",
+                "format": "%(levelname)s uvicorn: %(message)s",
+            }
+        },
+        "handlers": {
+            "sanitized": {
+                "class": "logging.StreamHandler",
+                "formatter": "sanitized",
+                "stream": "ext://sys.stderr",
+            }
+        },
+        "loggers": {
+            "uvicorn": {"handlers": ["sanitized"], "level": "WARNING", "propagate": False},
+            "uvicorn.error": {"handlers": ["sanitized"], "level": "WARNING", "propagate": False},
+            "uvicorn.access": {"handlers": [], "level": "CRITICAL", "propagate": False},
+        },
+    }

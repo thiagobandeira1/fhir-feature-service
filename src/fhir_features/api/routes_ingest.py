@@ -27,15 +27,29 @@ router = APIRouter(prefix="/v1/ingest", tags=["ingest"])
 async def ingest_bundle(
     request: Request, db: Annotated[Database, Depends(get_db)]
 ) -> IngestResponse | JSONResponse:
-    body = await request.body()
     max_bytes = get_settings().max_bundle_bytes
-    if len(body) > max_bytes:
+
+    def _too_large() -> JSONResponse:
         return problem_response(
             413,
             "Bundle too large",
             f"bundle exceeds the configured cap of {max_bytes} bytes",
             code="bundle_too_large",
         )
+
+    # Reject on the declared length first, then stream with a running cap — never buffer an
+    # unbounded body into memory before checking it.
+    declared = request.headers.get("content-length")
+    if declared is not None and declared.isdigit() and int(declared) > max_bytes:
+        return _too_large()
+    chunks: list[bytes] = []
+    received = 0
+    async for chunk in request.stream():
+        received += len(chunk)
+        if received > max_bytes:
+            return _too_large()
+        chunks.append(chunk)
+    body = b"".join(chunks)
     try:
         payload = json.loads(body)
     except (ValueError, UnicodeDecodeError):

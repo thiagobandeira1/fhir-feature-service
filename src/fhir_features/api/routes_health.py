@@ -20,7 +20,8 @@ router = APIRouter(tags=["ops"])
 )
 def healthz(db: Annotated[Database, Depends(get_db)]) -> HealthResponse | JSONResponse:
     try:
-        row = db.conn.execute("SELECT max(version) FROM schema_migrations").fetchone()
+        with db.reader() as conn:
+            row = conn.execute("SELECT max(version) FROM schema_migrations").fetchone()
         schema_version = int(row[0]) if row and row[0] is not None else 0
     except Exception:
         return problem_response(503, "Not ready", "database is unavailable", code="db_unavailable")

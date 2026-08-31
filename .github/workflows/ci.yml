@@ -36,7 +36,8 @@ jobs:
 
       - name: Guard — no data files staged
         run: |
-          if git ls-files | grep -E '\.(csv|parquet|db|duckdb|sqlite)$' | grep -v '^synthetic/samples/'; then
-            echo "::error::Data files outside synthetic/samples/ are committed"; exit 1
+          if git ls-files | grep -E '\.(csv|tsv|parquet|db|duckdb|sqlite|sqlite3)$|\.json\.gz$' \
+             | grep -Ev '^synthetic/samples/[A-Za-z0-9_]+.*\.json\.gz$'; then
+            echo "::error::Data files outside the vetted synthetic/samples fixtures are committed"; exit 1
           fi
           echo "OK: no stray data files"
